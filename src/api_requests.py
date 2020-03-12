@@ -1,10 +1,10 @@
 import yfinance as yf
-import pprint
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import os
 import datetime
+import pycountry
 
 FILE = "investment_shares.csv"
 PATH = r'C:\Users\Marco\Documents'
@@ -100,6 +100,18 @@ def is_weekend():
         print("Error calculating weekend check")
 
 
+def fill_short_name(shares_df):
+    """Returns a list with Holdings shortName"""
+    short_name = []
+    for share in shares_df.holding:
+        try:
+            ticker = yf.Ticker(share)
+            short_name.append(ticker.info.get('shortName'))
+        except:
+            short_name.append("N/A")
+    return short_name
+
+
 def is_dividend(shares_list):
     """Returns a list specifying if the ticker pays dividends"""
     dividend_list = []
@@ -132,11 +144,32 @@ def create_shares_list(shares_df):
 
 
 def compile_shares_df(shares_df):
+    # shares_df['short_name'] = fill_short_name(shares_df)
     shares_df['cost'] = calc_cost_of_share(shares_df)
     shares_df['perc_cost'] = calc_perc_cost_per_share(shares_df)
     shares_df['dividend'] = dividend_df(shares_df)
     return shares_df
 
+
+def return_alpha3_list(country_list):
+    """Returns a list of alpha 3 codes. Input must be the full name of the country"""
+    alpha3_list = []
+    for country in country_list:
+        try:
+            alpha3_list.append(pycountry.countries.get(name=country).alpha_3)
+        except:
+            alpha3_list.append(None)
+    return alpha3_list
+
+def return_country_name_list(code_list):
+    """Returns a list of country names. Input must be the alpha 3 code of the country"""
+    name_list = []
+    for alpha_code in code_list:
+        try:
+            name_list.append(pycountry.countries.get(alpha_3=alpha_code).name)
+        except:
+            name_list.append(None)
+    return name_list
 
 # if __name__ == "__main__":
 #     weekend_check = is_weekend()

@@ -161,6 +161,7 @@ def return_alpha3_list(country_list):
             alpha3_list.append(None)
     return alpha3_list
 
+
 def return_country_name_list(code_list):
     """Returns a list of country names. Input must be the alpha 3 code of the country"""
     name_list = []

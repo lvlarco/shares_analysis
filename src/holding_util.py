@@ -1,5 +1,6 @@
 import pandas as pd
 from yfinance import Ticker, Tickers
+import yfinance.utils as utils
 
 yahoo_url = "https://finance.yahoo.com/quote"
 etfdb_url = "https://etfdb.com/etf/{}/#holdings"
@@ -65,7 +66,42 @@ class Holdings(Tickers):
         return sector_list
 
 
-# #
-# ticks = Holdings('botz nobl')
-# slist = ticks.return_sector_list()
-# print(tick_h.return_long_name)
+class ScrapeHolding(object):
+
+    def __init__(self, holding=None, holdings_list=None):
+        self.holding = str(holding).upper()
+        self.holdings_list = holdings_list
+
+    def scrape_json_value(self, key="summaryProfile", detail_key=None):
+        """Returns the value of key value pair from Yahoo Finance scraping json. Default to summaryProfile"""
+        try:
+            scrape_url = 'https://finance.yahoo.com/quote'
+            url = '%s/%s' % (scrape_url, self.holding)
+            data = utils.get_json(url)
+            return data[key][detail_key]
+        except:
+            pass
+            # print(
+            #     "Could not retreive {} from {}. Ticker must be a STOCK, cannot be ETF".format(detail_key.capitalize(),
+            #                                                                                   self.holding))
+
+    def scrape_json_values(self, detail_key=None):
+        """Returns a list of Values for all tickers in tickers_list"""
+        return_list = []
+        for ticker in self.holdings_list:
+            self.holding = ticker
+            try:
+                value = self.scrape_json_value(detail_key=detail_key)
+                return_list.append(value)
+            except:
+                return_list.append(None)
+        return return_list
+
+
+# tick_list = ['BABA', 'NESN', '700', '2330', '005930', 'ROG', 'NOVN', '7203', 'HSBA',
+#              'AZN', '1299', 'SAP', 'ASML', 'CSL', 'SAN']
+# sh = ScrapeHolding(holdings_list=tick_list)
+# country = sh.scrape_json_values(detail_key="country")
+h = Holding('vxus')
+holdings = h.scrape_holdings()
+print(holdings)

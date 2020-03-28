@@ -102,6 +102,6 @@ class ScrapeHolding(object):
 #              'AZN', '1299', 'SAP', 'ASML', 'CSL', 'SAN']
 # sh = ScrapeHolding(holdings_list=tick_list)
 # country = sh.scrape_json_values(detail_key="country")
-h = Holding('vxus')
-holdings = h.scrape_holdings()
-print(holdings)
+# h = Holding('vxus')
+# holdings = h.scrape_holdings()
+# print(holdings)

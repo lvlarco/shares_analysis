@@ -172,6 +172,13 @@ def return_country_name_list(code_list):
             name_list.append(None)
     return name_list
 
+
+def convert_to_perc(key):
+    if key:
+        return key * 100
+    else:
+        return None
+
 # if __name__ == "__main__":
 #     weekend_check = is_weekend()
 #     shares_df = load_csv(PATH, FILE)

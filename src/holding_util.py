@@ -4,6 +4,8 @@ import pandas as pd
 import yfinance.utils as utils
 
 from yfinance import Ticker, Tickers
+from datetime import datetime
+from resources.ticker_mapping import tick_map
 
 yahoo_url = "https://finance.yahoo.com/quote"
 etfdb_url = "https://etfdb.com/etf/{}/#holdings"
@@ -49,7 +51,7 @@ class Holding(Ticker):
             scrape_url = "{}/{}/holdings".format(yahoo_url, self.share)
             holdings_list = pd.read_html(scrape_url)
             holdings_df = holdings_list[0].dropna(axis=0)
-        holdings_df["% Assets"] = holdings_df["% Assets"].str.replace('%', '').astype(float)
+        holdings_df.loc[:, "% Assets"] = holdings_df["% Assets"].str.replace('%', '').astype(float)
         return holdings_df.set_index('Symbol').rename(columns={"% Assets": "Perc Assets"})
 
 
@@ -164,26 +166,34 @@ def calculate_value_weight(value_list):
 # print(holdings)
 
 
-##Testing shares account
-accounts = ["rh_account.csv"]
-dirpath = r"C:\Users\Marco\github_repos\shares_analysis\resources"
-path = os.path.join(dirpath, accounts[0])
-account_df = pd.read_csv(path).set_index("Stock")
-sh = ScrapeHolding(holdings_list=account_df.index)
-price_list = sh.scrape_json_values(key="price", detail_key="regularMarketPrice")
-account_df["Value"] = account_df.Shares * price_list
-rh_value = sum(account_df["Value"])
-account_df["Allocation Ratio"] = account_df["Value"]/rh_value
-account_df.to_csv(r"{}\robinhood.csv".format(dirpath))
+def calculate_account_value(file):
+    """Calculates the total value of an account. Creates a get request to yahoo finance for every ticker in file,
+    requesting latest market value. In addition, creates a copy of file based off Allocation Ratio
+    :param file: str. Account file name
+    :return account_total_value: int. Total value of account
+    """
+    dirpath = r"C:\Users\Marco\github_repos\shares_analysis\resources"
+    path = os.path.join(dirpath, file)
+    account_df = pd.read_csv(path).set_index("Stock")
+    sh = ScrapeHolding(holdings_list=account_df.index)
+    price_list = sh.scrape_json_values(key="price", detail_key="regularMarketPrice")
+    account_df["Value"] = account_df.Shares * price_list
+    account_total_value = sum(account_df["Value"])
+    account_df["Allocation Ratio"] = account_df["Value"] / account_total_value
+    account_df.to_csv(r"{}\robinhood.csv".format(dirpath))
+    return account_total_value
 
+
+robinhood_file = "rh_account.csv"
 
 ###Passing a list of ETFs
-accounts = ["m1.csv", "ira.csv", "robinhood.csv", "hsa.csv", "401k.csv"]
-value_worth = [5590, 4934, rh_value, 900, 88041]
+accounts = ["m1.csv", "ira.csv", "hsa.csv", "robinhood.csv"]
+value_worth = [8138, 6573, 2140, calculate_account_value(robinhood_file)]
 # accounts = ["401k.csv"]
 # value_worth = [900]
 acc_worth = calculate_value_weight(value_worth)
-# dirpath = r"C:\Users\Marco\github_repos\shares_analysis\resources"
+print("Total worth $", round(sum(value_worth), 2))z
+dirpath = r"C:\Users\Marco\github_repos\shares_analysis\resources"
 
 final_df = pd.DataFrame()
 for acc, worth in zip(accounts, acc_worth):
@@ -204,17 +214,16 @@ for acc, worth in zip(accounts, acc_worth):
             asset_list2 = []
             for etf2 in etf_list2:
                 h2 = Holding(etf2)
-                h_df2 = h2.scrape_holdings(source=source) #Returns "Name" and "Perc Assets" for ETF
-                h_df2["Weight"] = h_df[h_df.index == etf2]["Perc Assets"][0] #Creates Weight based off ETF
+                h_df2 = h2.scrape_holdings(source=source)  # Returns "Name" and "Perc Assets" for ETF
+                h_df2["Weight"] = h_df.loc[h_df.index == etf2, ["Perc Assets"]].iloc[0, 0]
                 h_df2["Perc Assets"] = h_df2["Perc Assets"] * h_df2["Weight"] / 100
                 h_df = h_df.drop(h_df[h_df.index == etf2].index)
                 if not h_df2.empty:
                     h_df = h_df.append(h_df2, sort=False)
-                # asset_list.append(h_df2)
-            h_df["Weight"] = etf_df[etf_df.index == etf]["Allocation Ratio"][0]
+            h_df["Weight"] = etf_df.loc[etf_df.index == etf, ["Allocation Ratio"]].iloc[0, 0]
             asset_list.append(h_df)
             continue
-        h_df["Weight"] = etf_df[etf_df.index == etf]["Allocation Ratio"][0]
+        h_df["Weight"] = etf_df.loc[etf_df.index == etf, ["Allocation Ratio"]].iloc[0, 0]
         asset_list.append(h_df)
     asset_df = etf_asset_allocation(asset_list)
     stock_df = stock_allocation(account_df)
@@ -222,8 +231,10 @@ for acc, worth in zip(accounts, acc_worth):
         asset_df = asset_df.append(stock_df)
     asset_df = asset_df * worth
     final_df = pd.concat([final_df, asset_df])
+tlist = [t for t in final_df.index.to_list() if t in tick_map.keys()]
+for t in tlist:
+    final_df.rename(index={t: tick_map.get(t)}, inplace=True)
 final_df = final_df.groupby(final_df.index).sum()
-final_df.to_csv(r"{}\results.csv".format(dirpath))
-
-
-
+final_df.columns = ["Percent"]
+final_df.index.name = "Symbol"
+final_df.to_csv(r"{}\{}_results.csv".format(dirpath, str(datetime.now().strftime('%y-%m-%d'))))
